@@ -87,48 +87,89 @@ export async function sendMessage(
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  try {
-    const gameDataContext = formatDataForGemini(ddragonData);
-    const systemInstruction = SYSTEM_PROMPT(gameDataContext, rank);
+  // Prepare data once (doesn't depend on model name)
+  const gameDataContext = formatDataForGemini(ddragonData);
+  const systemInstruction = SYSTEM_PROMPT(gameDataContext, rank);
 
-    // Use gemini-1.5-pro or gemini-1.5-flash model
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: systemInstruction
-    });
+  // Try multiple model names in order of preference
+  const modelNames = [
+    'gemini-2.5-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-pro',
+    'gemini-1.5-flash-latest'
+  ];
 
-    // Convert conversation history to Gemini format
-    // Gemini expects alternating user/model messages with parts array
-    const chatHistory = conversationHistory.length > 0
-      ? conversationHistory.map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        }))
-      : [];
+  let lastError: any = null;
 
-    // Start a chat session with history (or without if no history)
-    const chat = chatHistory.length > 0
-      ? model.startChat({ history: chatHistory })
-      : model.startChat();
+  for (const modelName of modelNames) {
+    try {
 
-    // Send the new message
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    const text = response.text();
+      // Try the current model name
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemInstruction
+      });
 
-    return text;
-  } catch (error: any) {
-    // Handle Gemini API errors
-    if (error.message?.includes('API key')) {
-      throw new Error('Invalid API key. Please check your VITE_GEMINI_API_KEY configuration.');
+      // Convert conversation history to Gemini format
+      // Gemini expects alternating user/model messages with parts array
+      const chatHistory = conversationHistory.length > 0
+        ? conversationHistory.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+          }))
+        : [];
+
+      // Start a chat session with history (or without if no history)
+      const chat = chatHistory.length > 0
+        ? model.startChat({ history: chatHistory })
+        : model.startChat();
+
+      // Send the new message
+      const result = await chat.sendMessage(message);
+      const response = await result.response;
+      const text = response.text();
+
+      // Log successful model in dev mode
+      if (import.meta.env.DEV) {
+        if (modelName === 'gemini-2.5-flash') {
+          console.log(`Using model: ${modelName}`);
+        } else {
+          console.log(`Using model: ${modelName} (fallback from gemini-2.5-flash)`);
+        }
+      }
+
+      return text;
+    } catch (error: any) {
+      lastError = error;
+
+      // If it's a 404, try the next model
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        if (import.meta.env.DEV) {
+          console.log(`Model ${modelName} not available, trying next model...`);
+        }
+        continue;
+      }
+
+      // For other errors, break and handle them
+      break;
     }
-    if (error.message?.includes('quota') || error.message?.includes('rate')) {
-      throw new Error('Too many requests. Please wait a moment before trying again.');
-    }
-    if (error.message?.includes('401') || error.message?.includes('403')) {
-      throw new Error('Invalid API key or insufficient permissions. Please check your Gemini API key.');
-    }
-    throw new Error(`API Error: ${error.message || 'An unexpected error occurred'}`);
   }
+
+  // If we get here, all models failed or we have a non-404 error
+  // Handle Gemini API errors
+  if (lastError?.message?.includes('API key')) {
+    throw new Error('Invalid API key. Please check your VITE_GEMINI_API_KEY configuration.');
+  }
+  if (lastError?.message?.includes('quota') || lastError?.message?.includes('rate')) {
+    throw new Error('Too many requests. Please wait a moment before trying again.');
+  }
+  if (lastError?.message?.includes('401') || lastError?.message?.includes('403')) {
+    throw new Error('Invalid API key or insufficient permissions. Please check your Gemini API key.');
+  }
+  if (lastError?.message?.includes('404') || lastError?.message?.includes('Not Found')) {
+    throw new Error('None of the requested Gemini models are available. Please check your API key permissions and ensure the Generative Language API is enabled in your Google Cloud project.');
+  }
+  throw new Error(`API Error: ${lastError?.message || 'An unexpected error occurred'}`);
 }
 
