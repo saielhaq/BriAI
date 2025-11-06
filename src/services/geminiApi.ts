@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { DDragonData, Rank } from '../types';
-import { formatDataForClaude } from './dataLoader';
+import { formatDataForGemini } from './dataLoader';
 
 const SYSTEM_PROMPT = (gameData: string, rank?: Rank) => `You are BriAI, a professional League of Legends build advisor. Your personality combines the expertise of a professional coach with the friendliness of a supportive teammate. You are knowledgeable, confident, and always provide clear, concise recommendations.
 
@@ -73,15 +73,10 @@ export async function sendMessage(
   ddragonData: DDragonData,
   rank?: Rank
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error('Anthropic API key is not configured. Please add VITE_ANTHROPIC_API_KEY to your .env file.');
-  }
-
-  // Validate API key format (should start with 'sk-ant-')
-  if (!apiKey.startsWith('sk-ant-')) {
-    console.warn('API key format may be incorrect. Anthropic API keys typically start with "sk-ant-"');
+    throw new Error('Gemini API key is not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
   }
 
   // Log diagnostic info (without exposing the full key)
@@ -90,44 +85,50 @@ export async function sendMessage(
     console.log('API Key length:', apiKey?.length || 0);
   }
 
-  const client = new Anthropic({
-    apiKey,
-    dangerouslyAllowBrowser: true
-  });
+  const genAI = new GoogleGenerativeAI(apiKey);
 
   try {
-    const gameDataContext = formatDataForClaude(ddragonData);
+    const gameDataContext = formatDataForGemini(ddragonData);
+    const systemInstruction = SYSTEM_PROMPT(gameDataContext, rank);
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT(gameDataContext, rank),
-      messages: [
-        ...conversationHistory,
-        { role: 'user', content: message }
-      ]
+    // Use gemini-1.5-pro or gemini-1.5-flash model
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: systemInstruction
     });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
-    }
+    // Convert conversation history to Gemini format
+    // Gemini expects alternating user/model messages with parts array
+    const chatHistory = conversationHistory.length > 0
+      ? conversationHistory.map(msg => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }]
+        }))
+      : [];
 
-    throw new Error('Unexpected response format from Claude API');
-  } catch (error) {
-    if (error instanceof Anthropic.APIError) {
-      if (error.status === 429) {
-        throw new Error('Too many requests. Please wait a moment before trying again.');
-      }
-      if (error.status === 401) {
-        // Enhanced 401 error message with diagnostic info
-        const diagnosticInfo = import.meta.env.DEV
-          ? `\n\nDiagnostic info:\n- API key present: ${apiKey ? 'Yes' : 'No'}\n- API key format: ${apiKey?.startsWith('sk-ant-') ? 'Correct' : 'Incorrect (should start with sk-ant-)'}\n- Make sure you restarted the dev server after adding/updating .env file`
-          : '';
-        throw new Error(`Invalid API key. Please check your configuration.${diagnosticInfo}`);
-      }
-      throw new Error(`API Error: ${error.message}`);
+    // Start a chat session with history (or without if no history)
+    const chat = chatHistory.length > 0
+      ? model.startChat({ history: chatHistory })
+      : model.startChat();
+
+    // Send the new message
+    const result = await chat.sendMessage(message);
+    const response = await result.response;
+    const text = response.text();
+
+    return text;
+  } catch (error: any) {
+    // Handle Gemini API errors
+    if (error.message?.includes('API key')) {
+      throw new Error('Invalid API key. Please check your VITE_GEMINI_API_KEY configuration.');
     }
-    throw error;
+    if (error.message?.includes('quota') || error.message?.includes('rate')) {
+      throw new Error('Too many requests. Please wait a moment before trying again.');
+    }
+    if (error.message?.includes('401') || error.message?.includes('403')) {
+      throw new Error('Invalid API key or insufficient permissions. Please check your Gemini API key.');
+    }
+    throw new Error(`API Error: ${error.message || 'An unexpected error occurred'}`);
   }
 }
+

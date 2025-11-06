@@ -1,6 +1,6 @@
 import { useReducer, useCallback } from 'react';
 import type { Message, ChatState, DDragonData, Rank } from '../types';
-import { sendMessage } from '../services/claudeApi';
+import { sendMessage } from '../services/geminiApi';
 
 type ChatAction =
   | { type: 'ADD_MESSAGE'; message: Message }

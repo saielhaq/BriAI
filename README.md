@@ -7,7 +7,7 @@
 [![Built with React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)](https://vitejs.dev/)
-[![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude%20AI-8A2BE2)](https://www.anthropic.com/)
+[![Powered by Gemini](https://img.shields.io/badge/Powered%20by-Google%20Gemini-4285F4)](https://ai.google.dev/)
 
 </div>
 
@@ -15,7 +15,7 @@
 
 ## ✨ Features
 
-- 🤖 **AI-Powered Recommendations** - Get expert build advice using Claude Sonnet 4 AI
+- 🤖 **AI-Powered Recommendations** - Get expert build advice using Google Gemini AI
 - 🎮 **Champion-Specific Builds** - Tailored recommendations for any champion and matchup
 - 🛡️ **Runes & Items** - Complete guidance on optimal rune setups and item builds
 - 🎯 **Rank-Aware** - Adjusts recommendations based on your rank (Iron to Challenger)
@@ -31,7 +31,7 @@
 ### Prerequisites
 
 - Node.js 18+ and npm
-- An Anthropic API key ([Get one here](https://console.anthropic.com/))
+- A Google Gemini API key ([Get one here](https://aistudio.google.com/app/apikey))
 - DDragon data files from Riot Games
 
 ### Installation
@@ -56,10 +56,10 @@ Create a `.env` file in the root directory:
 cp .env.example .env
 ```
 
-Then edit `.env` and add your Anthropic API key:
+Then edit `.env` and add your Google Gemini API key:
 
 ```env
-VITE_ANTHROPIC_API_KEY=your_actual_api_key_here
+VITE_GEMINI_API_KEY=your_actual_api_key_here
 ```
 
 4. **Add League of Legends data**
@@ -91,13 +91,13 @@ The app will be available at `http://localhost:5173`
 
 ---
 
-## 🔑 Getting Your Claude API Key
+## 🔑 Getting Your Gemini API Key
 
-1. Visit [Anthropic Console](https://console.anthropic.com/)
-2. Sign up or log in to your account
-3. Navigate to the API Keys section
-4. Generate a new API key
-5. Copy the key and add it to your `.env` file
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Sign up or log in with your Google account
+3. Click "Create API Key"
+4. Copy the generated API key
+5. Add it to your `.env` file as `VITE_GEMINI_API_KEY`
 
 **Important:** Never commit your `.env` file or share your API key publicly!
 
@@ -154,7 +154,7 @@ src/
 │   ├── useChat.ts          # Chat state management
 │   └── useTheme.ts         # Theme management
 ├── services/            # External service integrations
-│   ├── claudeApi.ts        # Claude AI integration
+│   ├── geminiApi.ts        # Google Gemini AI integration
 │   └── dataLoader.ts       # DDragon data loader
 ├── types/               # TypeScript type definitions
 │   └── index.ts
@@ -170,7 +170,7 @@ src/
 - **Frontend Framework:** React 18 with TypeScript
 - **Build Tool:** Vite 5
 - **Styling:** TailwindCSS
-- **AI Integration:** Anthropic Claude API (@anthropic-ai/sdk)
+- **AI Integration:** Google Gemini API (@google/generative-ai)
 - **Markdown Rendering:** react-markdown
 - **Notifications:** react-hot-toast
 - **Icons:** lucide-react
@@ -216,16 +216,15 @@ src/
 - **No data persistence** - Conversations are not saved or stored
 - **Temporary sessions only** - All chat history clears on page refresh
 - **Client-side only** - No backend server, all processing happens in your browser
-- **API calls** - Only your messages and AI responses are sent to Anthropic's API
+- **API calls** - Only your messages and AI responses are sent to Google's Gemini API
 
 ---
 
 ## 📝 Important Notes
 
 ### API Usage
-- API calls are made directly from the browser to Anthropic
-- `dangerouslyAllowBrowser: true` is enabled for client-side usage
-- Monitor your API usage in the Anthropic Console
+- API calls are made directly from the browser to Google Gemini API
+- Monitor your API usage in the Google AI Studio
 - Consider implementing rate limiting for production use
 
 ### Data Files
@@ -262,14 +261,14 @@ This project is provided as-is for personal use.
 - Check that JSON files are valid (not empty or corrupted)
 
 ### "Invalid API key"
-- Verify your `.env` file exists and contains `VITE_ANTHROPIC_API_KEY`
-- Ensure the key is correctly copied from Anthropic Console
+- Verify your `.env` file exists and contains `VITE_GEMINI_API_KEY`
+- Ensure the key is correctly copied from Google AI Studio
 - Restart the dev server after adding/changing the `.env` file
 
 ### "Too many requests"
-- You've hit the Anthropic API rate limit
+- You've hit the Gemini API rate limit
 - Wait a moment before trying again
-- Consider upgrading your Anthropic plan for higher limits
+- Check your API quota in Google AI Studio
 
 ### Theme not persisting
 - Check browser localStorage is enabled
@@ -279,7 +278,7 @@ This project is provided as-is for personal use.
 
 ## 🌟 Acknowledgments
 
-- Powered by [Anthropic Claude AI](https://www.anthropic.com/)
+- Powered by [Google Gemini AI](https://ai.google.dev/)
 - Data from [Riot Games DDragon](https://developer.riotgames.com/)
 - Icons by [Lucide](https://lucide.dev/)
 

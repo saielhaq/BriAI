@@ -29,7 +29,7 @@ export async function loadDDragonData(): Promise<DDragonData> {
   }
 }
 
-export function formatDataForClaude(data: DDragonData): string {
+export function formatDataForGemini(data: DDragonData): string {
   const championList = Object.values(data.champions)
     .map(c => `${c.name} (${c.tags.join(', ')})`)
     .join(', ');
